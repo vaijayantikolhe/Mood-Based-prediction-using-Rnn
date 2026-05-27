@@ -1,0 +1,73 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score
+
+# Load dataset
+df = pd.read_excel("/content/sample_data/Mood.xlsx")
+
+# --- Start of Data Cleaning Steps (copied from dlBxMRX-p5NN) ---
+# The actual headers are in the first row (index 0) of the DataFrame
+actual_headers = df.iloc[0].tolist()
+# Assign these as the new column names
+df.columns = actual_headers
+# Drop the first two rows, which contain the headers and the NaN row
+df = df[2:].copy() # Use .copy() to avoid SettingWithCopyWarning later
+
+# Ensure column names are stripped of whitespace for robust access
+df.columns = df.columns.str.strip()
+
+# Convert 'Label_Num' to numeric
+# Check if 'Label_Num' column exists after cleaning
+if 'Label_Num' in df.columns:
+    df['Label_Num'] = pd.to_numeric(df['Label_Num'], errors='coerce')
+else:
+    print("Warning: 'Label_Num' column not found after header cleaning.")
+
+# Remove empty rows
+# Ensure 'Text' and 'Label_Num' are valid columns before dropping NA
+subset_cols_for_dropna = [col for col in ['Text', 'Label_Num'] if col in df.columns]
+if subset_cols_for_dropna:
+    df.dropna(subset=subset_cols_for_dropna, inplace=True)
+else:
+    print("Warning: Neither 'Text' nor 'Label_Num' columns found for dropna subset.")
+# --- End of Data Cleaning Steps ---
+
+# Input & Output
+X = df['Text']
+y = df['Label_Num']
+
+# Convert text → numbers
+vectorizer = CountVectorizer()
+X_vector = vectorizer.fit_transform(X)
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split(
+    X_vector, y, test_size=0.2, random_state=42
+)
+
+# Model (very simple)
+model = MultinomialNB()
+model.fit(X_train, y_train)
+
+# Prediction
+y_pred = model.predict(X_test)
+
+# Accuracy
+print("Accuracy:", accuracy_score(y_test, y_pred))
+
+def predict_mood(text):
+    text_vec = vectorizer.transform([text])
+    result = model.predict(text_vec)[0]
+
+    if result == 0:
+        return "Happy 😊"
+    elif result == 1:
+        return "Sad 😢"
+    else:
+        return "Angry 😡"
+
+# Test
+print(predict_mood("I am very happy"))
+print(predict_mood("Mala khup raga yetoy"))
